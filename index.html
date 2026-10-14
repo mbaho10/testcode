@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>รอบตรวจวัด</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one-screen field tool — header, scrolling work area, bottom tab bar; dark viewfinder is the focal object */
+:root{
+  --bg:#EDF1EE; --surface:#FFFFFF; --sunk:#E3E9E5; --ink:#17201C; --muted:#5B6862; --line:#D2DBD5;
+  --accent:#0D6E61; --accent-ink:#FFFFFF; --accent-soft:#D7ECE7;
+  --warn:#A9500A; --warn-bg:#FBE9D9; --ok:#276F45; --ok-bg:#E0F0E6;
+  --scan-bg:#111816; --on-scan:#D9E4DE; --qr-plate:#FFFFFF; --qr-ink:#000000;
+  --f-body:"IBM Plex Sans Thai",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1412; --surface:#17201C; --sunk:#111917; --ink:#E4ECE7; --muted:#93A39B; --line:#29342F;
+  --accent:#42B7A4; --accent-ink:#04201B; --accent-soft:#163A33;
+  --warn:#F2A15E; --warn-bg:#3A2614; --ok:#72CC95; --ok-bg:#15301F;
+  --scan-bg:#060A09; --on-scan:#C9D6CF; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1412; --surface:#17201C; --sunk:#111917; --ink:#E4ECE7; --muted:#93A39B; --line:#29342F;
+  --accent:#42B7A4; --accent-ink:#04201B; --accent-soft:#163A33;
+  --warn:#F2A15E; --warn-bg:#3A2614; --ok:#72CC95; --ok-bg:#15301F;
+  --scan-bg:#060A09; --on-scan:#C9D6CF; color-scheme:dark}
+
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;-webkit-tap-highlight-color:transparent}
+*{box-sizing:border-box}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+.app{height:100%;display:flex;flex-direction:column}
+.wrap{width:100%;max-width:560px;margin-inline:auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+.top{background:var(--surface);border-bottom:1px solid var(--line);flex:none}
+.top-in{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:10px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.mark{width:30px;height:30px;border-radius:8px;background:var(--accent);display:grid;place-items:center;flex:none}
+.mark svg{width:18px;height:18px}
+.app-name{font-weight:700;font-size:17px;line-height:1.2}
+.sub{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.net{font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:6px;color:var(--muted);flex:none}
+.net::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.net.off::before{background:var(--warn)}
+
+main{flex:1;overflow-y:auto;min-height:0}
+.view{padding-block:16px 28px;display:flex;flex-direction:column;gap:18px}
+h2{font-size:20px;line-height:1.3;margin:0;text-wrap:balance}
+h3{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0;font-weight:600}
+p{margin:0}
+.hint{font-size:13px;color:var(--muted)}
+
+/* viewfinder */
+.finder{position:relative;width:min(100%,340px);aspect-ratio:1/1;max-width:100%;margin-inline:auto;background:var(--scan-bg);border-radius:16px;overflow:hidden;color:var(--on-scan)}
+.finder video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.finder .c{position:absolute;width:42px;height:42px;border:3px solid var(--accent);z-index:2}
+.c.tl{top:22px;left:22px;border-right:0;border-bottom:0;border-top-left-radius:10px}
+.c.tr{top:22px;right:22px;border-left:0;border-bottom:0;border-top-right-radius:10px}
+.c.bl{bottom:22px;left:22px;border-right:0;border-top:0;border-bottom-left-radius:10px}
+.c.br{bottom:22px;right:22px;border-left:0;border-top:0;border-bottom-right-radius:10px}
+.finder .idle{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:48px;font-size:14px}
+.finder .idle svg{width:46px;height:46px;opacity:.75}
+.finder .line{position:absolute;left:30px;right:30px;height:2px;background:var(--accent);box-shadow:0 0 12px var(--accent);top:30px;z-index:2;animation:sweep 2.2s ease-in-out infinite alternate}
+@keyframes sweep{to{top:calc(100% - 32px)}}
+@media (prefers-reduced-motion:reduce){.finder .line{animation:none;top:50%}}
+.scan-msg{font-size:13.5px;text-align:center;min-height:1.5em;color:var(--muted)}
+.scan-msg.err{color:var(--warn)}
+
+.btn{min-height:48px;border-radius:11px;font-weight:600;font-size:15px;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid transparent;cursor:pointer;padding:0 16px;text-decoration:none;user-select:none}
+.btn svg{width:19px;height:19px;flex:none}
+.btn-primary{background:var(--accent);color:var(--accent-ink)}
+.btn-ghost{background:var(--surface);border-color:var(--line);color:var(--ink)}
+.btn-sm{min-height:36px;font-size:13.5px;padding:0 12px;border-radius:9px}
+.btn:active{transform:translateY(1px)}
+.btn[disabled]{opacity:.55;cursor:default}
+label.btn:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+.manual{display:flex;gap:8px}
+.manual input{flex:1;min-width:0}
+input[type=text],input[type=search],textarea,select,.num input{font-size:17px;background:var(--surface);border:1px solid var(--line);border-radius:10px;min-height:48px;padding:10px 12px;width:100%}
+textarea{min-height:76px;resize:vertical;line-height:1.45}
+input::placeholder,textarea::placeholder{color:var(--muted);opacity:.8}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px dashed var(--line);background:transparent;border-radius:999px;padding:6px 12px;font-family:var(--f-mono);font-size:13px;cursor:pointer;color:var(--ink)}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.block{display:flex;flex-direction:column;gap:10px}
+
+/* device + form */
+.back{align-self:flex-start;background:none;border:0;padding:4px 0;color:var(--accent);font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.back svg{width:18px;height:18px}
+.dev{display:flex;flex-direction:column;gap:4px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.dev .id{font-family:var(--f-mono);font-size:13px;color:var(--accent);font-weight:600;letter-spacing:.02em}
+.dev .loc{font-size:13.5px;color:var(--muted)}
+.dev .last{font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px;margin-top:6px}
+.dev.unknown .id{color:var(--warn)}
+
+.fields{display:flex;flex-direction:column;gap:14px}
+.field{display:flex;flex-direction:column;gap:6px}
+.flab{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.flab label{font-weight:600}
+.range{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.num{position:relative;display:flex}
+.num input{padding-right:64px;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.num .unit{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-family:var(--f-mono);font-size:13px;color:var(--muted);pointer-events:none}
+.fnote{font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
+.field.out .num input,.field.out select{border-color:var(--warn);background:var(--warn-bg)}
+.field .flag{display:none;color:var(--warn);font-weight:600}
+.field.out .flag{display:inline}
+.form-err{color:var(--warn);font-size:13.5px;font-weight:500}
+.save-bar{position:sticky;bottom:0;padding-block:12px 4px;background:linear-gradient(to bottom,transparent,var(--bg) 30%)}
+.save-bar .btn{width:100%}
+
+/* history */
+.sumbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.counts{display:flex;gap:16px}
+.count b{display:block;font-family:var(--f-mono);font-size:22px;line-height:1.1}
+.count span{font-size:12px;color:var(--muted)}
+.list{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.rec+.rec{border-top:1px solid var(--line)}
+.rec summary{list-style:none;cursor:pointer;padding:12px 14px;display:flex;flex-direction:column;gap:3px}
+.rec summary::-webkit-details-marker{display:none}
+.r1{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.r1 .id{font-family:var(--f-mono);font-size:13px;font-weight:600}
+.r2{font-weight:500;min-width:0}
+.r3{font-size:12.5px;color:var(--muted);display:flex;gap:6px 10px;flex-wrap:wrap;align-items:center}
+.pills{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.pill{font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.p-ok{background:var(--ok-bg);color:var(--ok)}
+.p-warn{background:var(--warn-bg);color:var(--warn)}
+.p-pend{background:var(--sunk);color:var(--ink);border:1px solid var(--line)}
+.p-sent{color:var(--muted)}
+.p-ex{border:1px dashed var(--muted);color:var(--muted)}
+.rec .body{padding:0 14px 14px;display:flex;flex-direction:column;gap:10px}
+.vals{width:100%;border-collapse:collapse;font-size:13.5px}
+.vals td{padding:6px 0;border-top:1px solid var(--line)}
+.vals td:last-child{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.vals tr.out td:last-child{color:var(--warn);font-weight:600}
+.rec .note{font-size:13.5px;background:var(--sunk);border-radius:8px;padding:8px 10px}
+.rec-act{display:flex;justify-content:flex-end}
+.del{background:none;border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;color:var(--muted)}
+.del.arm{border-color:var(--warn);color:var(--warn);background:var(--warn-bg);font-weight:600}
+.empty{padding:28px 16px;text-align:center;color:var(--muted)}
+.ex-note{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted);border:1px dashed var(--line);border-radius:10px;padding:8px 12px}
+.linkbtn{background:none;border:0;color:var(--accent);font-weight:600;cursor:pointer;padding:4px 0}
+
+/* QR sheet */
+.qrgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.qr{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center}
+.qr .plate{background:var(--qr-plate);border-radius:8px;padding:8px;width:100%;max-width:170px}
+.qr svg{display:block;width:100%;height:auto}
+.qr .id{font-family:var(--f-mono);font-size:12.5px;font-weight:600}
+.qr .nm{font-size:12.5px;color:var(--muted);line-height:1.35}
+.storage-warn{font-size:13px;color:var(--warn);background:var(--warn-bg);border-radius:10px;padding:8px 12px}
+
+/* tabs */
+.tabs{flex:none;background:var(--surface);border-top:1px solid var(--line)}
+.tabs .wrap{display:grid;grid-template-columns:repeat(3,1fr)}
+.tab{background:none;border:0;padding:8px 4px 10px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;position:relative}
+.tab svg{width:23px;height:23px}
+.tab[aria-current="page"]{color:var(--accent);font-weight:600}
+.badge{position:absolute;top:4px;left:calc(50% + 6px);min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--warn);color:var(--surface);font-size:11px;font-weight:700;display:grid;place-items:center;font-family:var(--f-mono)}
+
+.toast{position:fixed;left:50%;transform:translate(-50%,12px);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;max-width:calc(100% - 32px);z-index:10}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="top">
+    <div class="wrap top-in">
+      <div class="brand">
+        <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" stroke-width="2.2" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 12l5-5"/><circle cx="12" cy="12" r="1.6" fill="var(--accent-ink)"/></svg></span>
+        <div style="min-width:0"><div class="app-name">รอบตรวจวัด</div><div class="sub" id="sub">สแกน QR อุปกรณ์เพื่อบันทึกค่า</div></div>
+      </div>
+      <span class="net" id="net">ออนไลน์</span>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- SCAN -->
+    <section id="v-scan" class="view wrap">
+      <div class="finder" id="finder">
+        <span class="c tl"></span><span class="c tr"></span><span class="c bl"></span><span class="c br"></span>
+        <video id="video" muted playsinline hidden></video>
+        <span class="line" id="sweep" hidden></span>
+        <div class="idle" id="idle">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v.01M14 20h.01M17 20h4v-3"/></svg>
+          <span>เล็ง QR ที่ติดบนตัวอุปกรณ์</span>
+        </div>
+      </div>
+      <p class="scan-msg" id="scanMsg" role="status" aria-live="polite"></p>
+      <div class="row2">
+        <label class="btn btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+          ถ่ายรูป QR
+          <input type="file" id="photo" accept="image/*" capture="environment" class="sr">
+        </label>
+        <button class="btn btn-ghost" id="liveBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10"/></svg>
+          <span id="liveLabel">สแกนสด</span>
+        </button>
+      </div>
+
+      <form class="block" id="manualForm" autocomplete="off">
+        <h3><label for="manualCode">พิมพ์รหัสเอง</label></h3>
+        <div class="manual">
+          <input type="text" id="manualCode" placeholder="เช่น EQ-PMP-0142" autocapitalize="characters" spellcheck="false">
+          <button class="btn btn-ghost" type="submit">ถัดไป</button>
+        </div>
+      </form>
+
+      <div class="block">
+        <h3>ลองด้วยรหัสตัวอย่าง</h3>
+        <div class="chips" id="chips"></div>
+        <p class="hint">หรือเปิดแท็บ “QR ทดสอบ” บนอีกเครื่อง แล้วกด “ถ่ายรูป QR” เพื่อลองสแกนจริง</p>
+      </div>
+    </section>
+
+    <!-- FORM -->
+    <section id="v-form" class="view wrap" hidden>
+      <button class="back" type="button" id="backBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg>สแกนใหม่</button>
+      <div id="devCard"></div>
+      <form id="readForm" class="block" novalidate autocomplete="off">
+        <div class="fields" id="fields"></div>
+        <div class="field">
+          <div class="flab"><label for="inspector">ผู้ตรวจ</label></div>
+          <input type="text" id="inspector" placeholder="ชื่อผู้บันทึก">
+        </div>
+        <div class="field">
+          <div class="flab"><label for="note">หมายเหตุ</label><span class="range">ไม่บังคับ</span></div>
+          <textarea id="note" placeholder="เช่น มีเสียงดังผิดปกติที่ลูกปืนด้านหลัง"></textarea>
+        </div>
+        <p class="form-err" id="formErr" role="alert"></p>
+        <div class="save-bar"><button class="btn btn-primary" type="submit">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>บันทึกในเครื่อง</button></div>
+      </form>
+    </section>
+
+    <!-- HISTORY -->
+    <section id="v-hist" class="view wrap" hidden>
+      <div class="sumbar">
+        <div class="counts">
+          <div class="count"><b id="cAll">0</b><span>ทั้งหมด</span></div>
+          <div class="count"><b id="cPend">0</b><span>รอส่ง</span></div>
+          <div class="count"><b id="cWarn">0</b><span>นอกเกณฑ์</span></div>
+        </div>
+        <button class="btn btn-primary btn-sm" id="syncBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>
+          <span id="syncLabel">ส่งขึ้นเซิร์ฟเวอร์</span></button>
+      </div>
+      <p class="hint">ต้นแบบนี้ยังไม่ต่อเซิร์ฟเวอร์จริง ปุ่มส่งเป็นการจำลอง ข้อมูลเก็บไว้ในเบราว์เซอร์ของเครื่องนี้</p>
+      <div id="storageWarn" class="storage-warn" hidden>เบราว์เซอร์นี้ไม่อนุญาตให้เก็บข้อมูล รายการจะหายเมื่อปิดหน้า</div>
+      <div id="exNote" class="ex-note" hidden><span>มีรายการตัวอย่าง 2 รายการไว้ให้ดูหน้าตา</span><button class="linkbtn" id="clearEx" type="button">ลบตัวอย่าง</button></div>
+      <div class="list" id="list"></div>
+    </section>
+
+    <!-- QR TEST -->
+    <section id="v-qr" class="view wrap" hidden>
+      <div class="block">
+        <h2>QR ทดสอบ</h2>
+        <p class="hint">เปิดหน้านี้บนคอมพิวเตอร์หรือมือถืออีกเครื่อง แล้วใช้เครื่องที่จะทดสอบกด “ถ่ายรูป QR” หรือ “สแกนสด” ที่แท็บสแกน</p>
+      </div>
+      <div class="qrgrid" id="qrgrid"></div>
+    </section>
+  </main>
+
+  <nav class="tabs" aria-label="เมนูหลัก">
+    <div class="wrap">
+      <button class="tab" data-view="scan" aria-current="page" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7.5" y="7.5" width="9" height="9" rx="1"/></svg>สแกน</button>
+      <button class="tab" data-view="hist" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>ประวัติ<span class="badge" id="badge" hidden>0</span></button>
+      <button class="tab" data-view="qr" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 20h1M17 20h1"/></svg>QR ทดสอบ</button>
+    </div>
+  </nav>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script>
+(function(){
+const DEVICES={
+  "EQ-PMP-0142":{name:"ปั๊มน้ำหล่อเย็น P-3",loc:"อาคาร B · ชั้น 1 · ห้องปั๊ม",fields:[
+    {k:"p",label:"แรงดันขาออก",unit:"bar",min:2.0,max:4.5,step:"0.1"},
+    {k:"t",label:"อุณหภูมิตัวเรือน",unit:"°C",max:70,step:"0.5"},
+    {k:"v",label:"ความสั่นสะเทือน",unit:"mm/s",max:4.5,step:"0.1"},
+    {k:"i",label:"กระแสมอเตอร์",unit:"A",max:18,step:"0.1"}]},
+  "EQ-MTR-0317":{name:"มอเตอร์สายพาน CV-12",loc:"โกดัง 2 · ไลน์บรรจุ",fields:[
+    {k:"i",label:"กระแส",unit:"A",max:32,step:"0.1"},
+    {k:"t",label:"อุณหภูมิขดลวด",unit:"°C",max:80,step:"0.5"},
+    {k:"v",label:"ความสั่นสะเทือน",unit:"mm/s",max:2.8,step:"0.1"},
+    {k:"n",label:"ความเร็วรอบ",unit:"rpm",min:1440,max:1480,step:"1"}]},
+  "EQ-CMP-0026":{name:"ปั๊มลม AC-2",loc:"ห้องเครื่อง · ฝั่งตะวันออก",fields:[
+    {k:"p",label:"แรงดันถัง",unit:"bar",min:6,max:8,step:"0.1"},
+    {k:"t",label:"อุณหภูมิลมขาออก",unit:"°C",max:95,step:"0.5"},
+    {k:"h",label:"ชั่วโมงทำงานสะสม",unit:"h",step:"1"},
+    {k:"o",label:"ระดับน้ำมัน",type:"select",opts:["ปกติ","ต่ำ","ต้องเติมด่วน"],bad:["ต่ำ","ต้องเติมด่วน"]}]},
+  "EQ-TRF-0008":{name:"หม้อแปลง TR-1",loc:"ห้องไฟฟ้าหลัก",fields:[
+    {k:"u",label:"แรงดัน L-L",unit:"V",min:380,max:420,step:"1"},
+    {k:"t",label:"อุณหภูมิน้ำมัน",unit:"°C",max:85,step:"0.5"},
+    {k:"l",label:"โหลด",unit:"%",max:80,step:"1"}]}
+};
+const GENERIC={name:"อุปกรณ์ที่ไม่อยู่ในทะเบียน",loc:"ยังไม่มีข้อมูลในระบบ กรอกค่าแบบทั่วไปได้",unknown:true,fields:[
+  {k:"x",label:"ค่าที่วัดได้",unit:"",step:"any"},
+  {k:"xu",label:"หน่วย",type:"text"}]};
+const QR={"EQ-PMP-0142": [25, "M2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM8 2h1v1h-1zM10 2h1v1h-1zM14 2h1v1h-1zM16 2h1v1h-1zM17 2h1v1h-1zM18 2h1v1h-1zM19 2h1v1h-1zM20 2h1v1h-1zM21 2h1v1h-1zM22 2h1v1h-1zM2 3h1v1h-1zM8 3h1v1h-1zM11 3h1v1h-1zM14 3h1v1h-1zM16 3h1v1h-1zM22 3h1v1h-1zM2 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM8 4h1v1h-1zM11 4h1v1h-1zM12 4h1v1h-1zM13 4h1v1h-1zM16 4h1v1h-1zM18 4h1v1h-1zM19 4h1v1h-1zM20 4h1v1h-1zM22 4h1v1h-1zM2 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM8 5h1v1h-1zM10 5h1v1h-1zM12 5h1v1h-1zM13 5h1v1h-1zM16 5h1v1h-1zM18 5h1v1h-1zM19 5h1v1h-1zM20 5h1v1h-1zM22 5h1v1h-1zM2 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM8 6h1v1h-1zM10 6h1v1h-1zM12 6h1v1h-1zM13 6h1v1h-1zM14 6h1v1h-1zM16 6h1v1h-1zM18 6h1v1h-1zM19 6h1v1h-1zM20 6h1v1h-1zM22 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM10 7h1v1h-1zM12 7h1v1h-1zM14 7h1v1h-1zM16 7h1v1h-1zM22 7h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM17 8h1v1h-1zM18 8h1v1h-1zM19 8h1v1h-1zM20 8h1v1h-1zM21 8h1v1h-1zM22 8h1v1h-1zM10 9h1v1h-1zM11 9h1v1h-1zM2 10h1v1h-1zM6 10h1v1h-1zM8 10h1v1h-1zM9 10h1v1h-1zM10 10h1v1h-1zM11 10h1v1h-1zM12 10h1v1h-1zM14 10h1v1h-1zM15 10h1v1h-1zM16 10h1v1h-1zM17 10h1v1h-1zM18 10h1v1h-1zM19 10h1v1h-1zM22 10h1v1h-1zM3 11h1v1h-1zM9 11h1v1h-1zM10 11h1v1h-1zM11 11h1v1h-1zM12 11h1v1h-1zM14 11h1v1h-1zM15 11h1v1h-1zM19 11h1v1h-1zM21 11h1v1h-1zM22 11h1v1h-1zM2 12h1v1h-1zM3 12h1v1h-1zM4 12h1v1h-1zM5 12h1v1h-1zM6 12h1v1h-1zM7 12h1v1h-1zM8 12h1v1h-1zM9 12h1v1h-1zM14 12h1v1h-1zM17 12h1v1h-1zM18 12h1v1h-1zM19 12h1v1h-1zM20 12h1v1h-1zM3 13h1v1h-1zM4 13h1v1h-1zM5 13h1v1h-1zM9 13h1v1h-1zM10 13h1v1h-1zM11 13h1v1h-1zM13 13h1v1h-1zM14 13h1v1h-1zM18 13h1v1h-1zM19 13h1v1h-1zM20 13h1v1h-1zM21 13h1v1h-1zM2 14h1v1h-1zM7 14h1v1h-1zM8 14h1v1h-1zM9 14h1v1h-1zM12 14h1v1h-1zM13 14h1v1h-1zM15 14h1v1h-1zM16 14h1v1h-1zM19 14h1v1h-1zM20 14h1v1h-1zM21 14h1v1h-1zM10 15h1v1h-1zM11 15h1v1h-1zM13 15h1v1h-1zM14 15h1v1h-1zM17 15h1v1h-1zM18 15h1v1h-1zM19 15h1v1h-1zM21 15h1v1h-1zM2 16h1v1h-1zM3 16h1v1h-1zM4 16h1v1h-1zM5 16h1v1h-1zM6 16h1v1h-1zM7 16h1v1h-1zM8 16h1v1h-1zM10 16h1v1h-1zM11 16h1v1h-1zM13 16h1v1h-1zM16 16h1v1h-1zM17 16h1v1h-1zM18 16h1v1h-1zM19 16h1v1h-1zM22 16h1v1h-1zM2 17h1v1h-1zM8 17h1v1h-1zM11 17h1v1h-1zM12 17h1v1h-1zM15 17h1v1h-1zM16 17h1v1h-1zM17 17h1v1h-1zM18 17h1v1h-1zM20 17h1v1h-1zM21 17h1v1h-1zM2 18h1v1h-1zM4 18h1v1h-1zM5 18h1v1h-1zM6 18h1v1h-1zM8 18h1v1h-1zM10 18h1v1h-1zM11 18h1v1h-1zM12 18h1v1h-1zM14 18h1v1h-1zM15 18h1v1h-1zM16 18h1v1h-1zM18 18h1v1h-1zM19 18h1v1h-1zM22 18h1v1h-1zM2 19h1v1h-1zM4 19h1v1h-1zM5 19h1v1h-1zM6 19h1v1h-1zM8 19h1v1h-1zM11 19h1v1h-1zM12 19h1v1h-1zM14 19h1v1h-1zM15 19h1v1h-1zM16 19h1v1h-1zM18 19h1v1h-1zM19 19h1v1h-1zM21 19h1v1h-1zM22 19h1v1h-1zM2 20h1v1h-1zM4 20h1v1h-1zM5 20h1v1h-1zM6 20h1v1h-1zM8 20h1v1h-1zM12 20h1v1h-1zM14 20h1v1h-1zM15 20h1v1h-1zM17 20h1v1h-1zM2 21h1v1h-1zM8 21h1v1h-1zM11 21h1v1h-1zM12 21h1v1h-1zM13 21h1v1h-1zM14 21h1v1h-1zM18 21h1v1h-1zM20 21h1v1h-1zM22 21h1v1h-1zM2 22h1v1h-1zM3 22h1v1h-1zM4 22h1v1h-1zM5 22h1v1h-1zM6 22h1v1h-1zM7 22h1v1h-1zM8 22h1v1h-1zM10 22h1v1h-1zM11 22h1v1h-1zM13 22h1v1h-1zM16 22h1v1h-1zM18 22h1v1h-1zM19 22h1v1h-1zM21 22h1v1h-1zM22 22h1v1h-1z"], "EQ-MTR-0317": [25, "M2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM8 2h1v1h-1zM10 2h1v1h-1zM16 2h1v1h-1zM17 2h1v1h-1zM18 2h1v1h-1zM19 2h1v1h-1zM20 2h1v1h-1zM21 2h1v1h-1zM22 2h1v1h-1zM2 3h1v1h-1zM8 3h1v1h-1zM13 3h1v1h-1zM14 3h1v1h-1zM16 3h1v1h-1zM22 3h1v1h-1zM2 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM8 4h1v1h-1zM11 4h1v1h-1zM14 4h1v1h-1zM16 4h1v1h-1zM18 4h1v1h-1zM19 4h1v1h-1zM20 4h1v1h-1zM22 4h1v1h-1zM2 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM8 5h1v1h-1zM10 5h1v1h-1zM11 5h1v1h-1zM13 5h1v1h-1zM16 5h1v1h-1zM18 5h1v1h-1zM19 5h1v1h-1zM20 5h1v1h-1zM22 5h1v1h-1zM2 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM8 6h1v1h-1zM10 6h1v1h-1zM12 6h1v1h-1zM13 6h1v1h-1zM14 6h1v1h-1zM16 6h1v1h-1zM18 6h1v1h-1zM19 6h1v1h-1zM20 6h1v1h-1zM22 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM10 7h1v1h-1zM11 7h1v1h-1zM14 7h1v1h-1zM16 7h1v1h-1zM22 7h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM17 8h1v1h-1zM18 8h1v1h-1zM19 8h1v1h-1zM20 8h1v1h-1zM21 8h1v1h-1zM22 8h1v1h-1zM10 9h1v1h-1zM12 9h1v1h-1zM2 10h1v1h-1zM6 10h1v1h-1zM8 10h1v1h-1zM9 10h1v1h-1zM10 10h1v1h-1zM14 10h1v1h-1zM15 10h1v1h-1zM16 10h1v1h-1zM17 10h1v1h-1zM18 10h1v1h-1zM19 10h1v1h-1zM22 10h1v1h-1zM9 11h1v1h-1zM10 11h1v1h-1zM11 11h1v1h-1zM14 11h1v1h-1zM17 11h1v1h-1zM19 11h1v1h-1zM21 11h1v1h-1zM22 11h1v1h-1zM4 12h1v1h-1zM6 12h1v1h-1zM7 12h1v1h-1zM8 12h1v1h-1zM10 12h1v1h-1zM11 12h1v1h-1zM12 12h1v1h-1zM14 12h1v1h-1zM17 12h1v1h-1zM18 12h1v1h-1zM19 12h1v1h-1zM20 12h1v1h-1zM2 13h1v1h-1zM3 13h1v1h-1zM4 13h1v1h-1zM5 13h1v1h-1zM7 13h1v1h-1zM13 13h1v1h-1zM14 13h1v1h-1zM17 13h1v1h-1zM18 13h1v1h-1zM19 13h1v1h-1zM20 13h1v1h-1zM21 13h1v1h-1zM2 14h1v1h-1zM3 14h1v1h-1zM5 14h1v1h-1zM6 14h1v1h-1zM7 14h1v1h-1zM8 14h1v1h-1zM11 14h1v1h-1zM12 14h1v1h-1zM13 14h1v1h-1zM15 14h1v1h-1zM16 14h1v1h-1zM18 14h1v1h-1zM19 14h1v1h-1zM20 14h1v1h-1zM21 14h1v1h-1zM10 15h1v1h-1zM11 15h1v1h-1zM13 15h1v1h-1zM14 15h1v1h-1zM19 15h1v1h-1zM20 15h1v1h-1zM21 15h1v1h-1zM2 16h1v1h-1zM3 16h1v1h-1zM4 16h1v1h-1zM5 16h1v1h-1zM6 16h1v1h-1zM7 16h1v1h-1zM8 16h1v1h-1zM10 16h1v1h-1zM11 16h1v1h-1zM12 16h1v1h-1zM13 16h1v1h-1zM16 16h1v1h-1zM17 16h1v1h-1zM20 16h1v1h-1zM22 16h1v1h-1zM2 17h1v1h-1zM8 17h1v1h-1zM12 17h1v1h-1zM15 17h1v1h-1zM16 17h1v1h-1zM17 17h1v1h-1zM18 17h1v1h-1zM21 17h1v1h-1zM2 18h1v1h-1zM4 18h1v1h-1zM5 18h1v1h-1zM6 18h1v1h-1zM8 18h1v1h-1zM10 18h1v1h-1zM12 18h1v1h-1zM14 18h1v1h-1zM15 18h1v1h-1zM16 18h1v1h-1zM18 18h1v1h-1zM20 18h1v1h-1zM22 18h1v1h-1zM2 19h1v1h-1zM4 19h1v1h-1zM5 19h1v1h-1zM6 19h1v1h-1zM8 19h1v1h-1zM11 19h1v1h-1zM14 19h1v1h-1zM15 19h1v1h-1zM16 19h1v1h-1zM18 19h1v1h-1zM19 19h1v1h-1zM21 19h1v1h-1zM22 19h1v1h-1zM2 20h1v1h-1zM4 20h1v1h-1zM5 20h1v1h-1zM6 20h1v1h-1zM8 20h1v1h-1zM14 20h1v1h-1zM15 20h1v1h-1zM17 20h1v1h-1zM2 21h1v1h-1zM8 21h1v1h-1zM12 21h1v1h-1zM13 21h1v1h-1zM14 21h1v1h-1zM18 21h1v1h-1zM19 21h1v1h-1zM22 21h1v1h-1zM2 22h1v1h-1zM3 22h1v1h-1zM4 22h1v1h-1zM5 22h1v1h-1zM6 22h1v1h-1zM7 22h1v1h-1zM8 22h1v1h-1zM10 22h1v1h-1zM11 22h1v1h-1zM13 22h1v1h-1zM16 22h1v1h-1zM18 22h1v1h-1zM19 22h1v1h-1zM21 22h1v1h-1zM22 22h1v1h-1z"], "EQ-CMP-0026": [25, "M2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM8 2h1v1h-1zM11 2h1v1h-1zM13 2h1v1h-1zM16 2h1v1h-1zM17 2h1v1h-1zM18 2h1v1h-1zM19 2h1v1h-1zM20 2h1v1h-1zM21 2h1v1h-1zM22 2h1v1h-1zM2 3h1v1h-1zM8 3h1v1h-1zM10 3h1v1h-1zM11 3h1v1h-1zM13 3h1v1h-1zM16 3h1v1h-1zM22 3h1v1h-1zM2 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM8 4h1v1h-1zM10 4h1v1h-1zM12 4h1v1h-1zM14 4h1v1h-1zM16 4h1v1h-1zM18 4h1v1h-1zM19 4h1v1h-1zM20 4h1v1h-1zM22 4h1v1h-1zM2 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM8 5h1v1h-1zM10 5h1v1h-1zM11 5h1v1h-1zM12 5h1v1h-1zM14 5h1v1h-1zM16 5h1v1h-1zM18 5h1v1h-1zM19 5h1v1h-1zM20 5h1v1h-1zM22 5h1v1h-1zM2 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM8 6h1v1h-1zM11 6h1v1h-1zM13 6h1v1h-1zM14 6h1v1h-1zM16 6h1v1h-1zM18 6h1v1h-1zM19 6h1v1h-1zM20 6h1v1h-1zM22 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM11 7h1v1h-1zM12 7h1v1h-1zM14 7h1v1h-1zM16 7h1v1h-1zM22 7h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM17 8h1v1h-1zM18 8h1v1h-1zM19 8h1v1h-1zM20 8h1v1h-1zM21 8h1v1h-1zM22 8h1v1h-1zM10 9h1v1h-1zM11 9h1v1h-1zM13 9h1v1h-1zM14 9h1v1h-1zM2 10h1v1h-1zM8 10h1v1h-1zM10 10h1v1h-1zM12 10h1v1h-1zM14 10h1v1h-1zM15 10h1v1h-1zM16 10h1v1h-1zM19 10h1v1h-1zM20 10h1v1h-1zM21 10h1v1h-1zM4 11h1v1h-1zM5 11h1v1h-1zM6 11h1v1h-1zM9 11h1v1h-1zM10 11h1v1h-1zM14 11h1v1h-1zM17 11h1v1h-1zM18 11h1v1h-1zM19 11h1v1h-1zM22 11h1v1h-1zM2 12h1v1h-1zM3 12h1v1h-1zM4 12h1v1h-1zM5 12h1v1h-1zM8 12h1v1h-1zM12 12h1v1h-1zM13 12h1v1h-1zM17 12h1v1h-1zM4 13h1v1h-1zM5 13h1v1h-1zM7 13h1v1h-1zM9 13h1v1h-1zM11 13h1v1h-1zM18 13h1v1h-1zM21 13h1v1h-1zM3 14h1v1h-1zM4 14h1v1h-1zM6 14h1v1h-1zM8 14h1v1h-1zM9 14h1v1h-1zM11 14h1v1h-1zM15 14h1v1h-1zM16 14h1v1h-1zM17 14h1v1h-1zM18 14h1v1h-1zM19 14h1v1h-1zM20 14h1v1h-1zM21 14h1v1h-1zM10 15h1v1h-1zM12 15h1v1h-1zM13 15h1v1h-1zM14 15h1v1h-1zM15 15h1v1h-1zM16 15h1v1h-1zM20 15h1v1h-1zM22 15h1v1h-1zM2 16h1v1h-1zM3 16h1v1h-1zM4 16h1v1h-1zM5 16h1v1h-1zM6 16h1v1h-1zM7 16h1v1h-1zM8 16h1v1h-1zM11 16h1v1h-1zM12 16h1v1h-1zM14 16h1v1h-1zM16 16h1v1h-1zM17 16h1v1h-1zM22 16h1v1h-1zM2 17h1v1h-1zM8 17h1v1h-1zM13 17h1v1h-1zM14 17h1v1h-1zM15 17h1v1h-1zM18 17h1v1h-1zM19 17h1v1h-1zM21 17h1v1h-1zM22 17h1v1h-1zM2 18h1v1h-1zM4 18h1v1h-1zM5 18h1v1h-1zM6 18h1v1h-1zM8 18h1v1h-1zM11 18h1v1h-1zM14 18h1v1h-1zM17 18h1v1h-1zM18 18h1v1h-1zM19 18h1v1h-1zM21 18h1v1h-1zM2 19h1v1h-1zM4 19h1v1h-1zM5 19h1v1h-1zM6 19h1v1h-1zM8 19h1v1h-1zM11 19h1v1h-1zM14 19h1v1h-1zM18 19h1v1h-1zM19 19h1v1h-1zM2 20h1v1h-1zM4 20h1v1h-1zM5 20h1v1h-1zM6 20h1v1h-1zM8 20h1v1h-1zM11 20h1v1h-1zM12 20h1v1h-1zM16 20h1v1h-1zM17 20h1v1h-1zM20 20h1v1h-1zM21 20h1v1h-1zM22 20h1v1h-1zM2 21h1v1h-1zM8 21h1v1h-1zM11 21h1v1h-1zM17 21h1v1h-1zM19 21h1v1h-1zM22 21h1v1h-1zM2 22h1v1h-1zM3 22h1v1h-1zM4 22h1v1h-1zM5 22h1v1h-1zM6 22h1v1h-1zM7 22h1v1h-1zM8 22h1v1h-1zM10 22h1v1h-1zM11 22h1v1h-1zM12 22h1v1h-1zM13 22h1v1h-1zM15 22h1v1h-1zM17 22h1v1h-1zM18 22h1v1h-1zM19 22h1v1h-1z"], "EQ-TRF-0008": [25, "M2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM8 2h1v1h-1zM16 2h1v1h-1zM17 2h1v1h-1zM18 2h1v1h-1zM19 2h1v1h-1zM20 2h1v1h-1zM21 2h1v1h-1zM22 2h1v1h-1zM2 3h1v1h-1zM8 3h1v1h-1zM10 3h1v1h-1zM11 3h1v1h-1zM12 3h1v1h-1zM14 3h1v1h-1zM16 3h1v1h-1zM22 3h1v1h-1zM2 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM8 4h1v1h-1zM11 4h1v1h-1zM13 4h1v1h-1zM14 4h1v1h-1zM16 4h1v1h-1zM18 4h1v1h-1zM19 4h1v1h-1zM20 4h1v1h-1zM22 4h1v1h-1zM2 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM8 5h1v1h-1zM13 5h1v1h-1zM14 5h1v1h-1zM16 5h1v1h-1zM18 5h1v1h-1zM19 5h1v1h-1zM20 5h1v1h-1zM22 5h1v1h-1zM2 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM8 6h1v1h-1zM10 6h1v1h-1zM12 6h1v1h-1zM13 6h1v1h-1zM14 6h1v1h-1zM16 6h1v1h-1zM18 6h1v1h-1zM19 6h1v1h-1zM20 6h1v1h-1zM22 6h1v1h-1zM2 7h1v1h-1zM8 7h1v1h-1zM12 7h1v1h-1zM13 7h1v1h-1zM16 7h1v1h-1zM22 7h1v1h-1zM2 8h1v1h-1zM3 8h1v1h-1zM4 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM7 8h1v1h-1zM8 8h1v1h-1zM10 8h1v1h-1zM12 8h1v1h-1zM14 8h1v1h-1zM16 8h1v1h-1zM17 8h1v1h-1zM18 8h1v1h-1zM19 8h1v1h-1zM20 8h1v1h-1zM21 8h1v1h-1zM22 8h1v1h-1zM12 9h1v1h-1zM2 10h1v1h-1zM4 10h1v1h-1zM6 10h1v1h-1zM8 10h1v1h-1zM11 10h1v1h-1zM12 10h1v1h-1zM14 10h1v1h-1zM18 10h1v1h-1zM21 10h1v1h-1zM3 11h1v1h-1zM6 11h1v1h-1zM7 11h1v1h-1zM9 11h1v1h-1zM10 11h1v1h-1zM12 11h1v1h-1zM13 11h1v1h-1zM15 11h1v1h-1zM17 11h1v1h-1zM18 11h1v1h-1zM20 11h1v1h-1zM21 11h1v1h-1zM2 12h1v1h-1zM3 12h1v1h-1zM4 12h1v1h-1zM5 12h1v1h-1zM7 12h1v1h-1zM8 12h1v1h-1zM11 12h1v1h-1zM13 12h1v1h-1zM16 12h1v1h-1zM18 12h1v1h-1zM22 12h1v1h-1zM3 13h1v1h-1zM5 13h1v1h-1zM6 13h1v1h-1zM7 13h1v1h-1zM9 13h1v1h-1zM13 13h1v1h-1zM14 13h1v1h-1zM15 13h1v1h-1zM17 13h1v1h-1zM19 13h1v1h-1zM20 13h1v1h-1zM2 14h1v1h-1zM3 14h1v1h-1zM4 14h1v1h-1zM5 14h1v1h-1zM8 14h1v1h-1zM10 14h1v1h-1zM13 14h1v1h-1zM16 14h1v1h-1zM18 14h1v1h-1zM10 15h1v1h-1zM16 15h1v1h-1zM17 15h1v1h-1zM21 15h1v1h-1zM22 15h1v1h-1zM2 16h1v1h-1zM3 16h1v1h-1zM4 16h1v1h-1zM5 16h1v1h-1zM6 16h1v1h-1zM7 16h1v1h-1zM8 16h1v1h-1zM11 16h1v1h-1zM12 16h1v1h-1zM14 16h1v1h-1zM18 16h1v1h-1zM19 16h1v1h-1zM20 16h1v1h-1zM2 17h1v1h-1zM8 17h1v1h-1zM12 17h1v1h-1zM16 17h1v1h-1zM17 17h1v1h-1zM19 17h1v1h-1zM2 18h1v1h-1zM4 18h1v1h-1zM5 18h1v1h-1zM6 18h1v1h-1zM8 18h1v1h-1zM10 18h1v1h-1zM12 18h1v1h-1zM14 18h1v1h-1zM16 18h1v1h-1zM19 18h1v1h-1zM21 18h1v1h-1zM22 18h1v1h-1zM2 19h1v1h-1zM4 19h1v1h-1zM5 19h1v1h-1zM6 19h1v1h-1zM8 19h1v1h-1zM12 19h1v1h-1zM13 19h1v1h-1zM15 19h1v1h-1zM17 19h1v1h-1zM18 19h1v1h-1zM19 19h1v1h-1zM21 19h1v1h-1zM2 20h1v1h-1zM4 20h1v1h-1zM5 20h1v1h-1zM6 20h1v1h-1zM8 20h1v1h-1zM10 20h1v1h-1zM11 20h1v1h-1zM13 20h1v1h-1zM15 20h1v1h-1zM16 20h1v1h-1zM19 20h1v1h-1zM22 20h1v1h-1zM2 21h1v1h-1zM8 21h1v1h-1zM12 21h1v1h-1zM13 21h1v1h-1zM14 21h1v1h-1zM15 21h1v1h-1zM19 21h1v1h-1zM20 21h1v1h-1zM21 21h1v1h-1zM22 21h1v1h-1zM2 22h1v1h-1zM3 22h1v1h-1zM4 22h1v1h-1zM5 22h1v1h-1zM6 22h1v1h-1zM7 22h1v1h-1zM8 22h1v1h-1zM10 22h1v1h-1zM13 22h1v1h-1zM15 22h1v1h-1zM16 22h1v1h-1zM19 22h1v1h-1zM22 22h1v1h-1z"]};
+
+const KEY="rt.records.v1",NAMEKEY="rt.inspector";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const fmt=iso=>{try{return new Date(iso).toLocaleString("th-TH",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}catch(e){return iso}};
+
+let storageOK=true, records=null;
+try{records=JSON.parse(localStorage.getItem(KEY)||"null")}catch(e){storageOK=false}
+if(!Array.isArray(records)){
+  const d1=new Date(Date.now()-26*3600e3), d2=new Date(Date.now()-2*3600e3);
+  records=[
+    {id:uid(),dev:"EQ-MTR-0317",at:d2.toISOString(),by:"สมชาย ก.",vals:{i:"29.5",t:"84",v:"2.4",n:"1462"},note:"ขดลวดร้อนกว่าปกติ ตรวจพัดลมระบายความร้อน",status:"warn",sync:"pending",ex:true},
+    {id:uid(),dev:"EQ-PMP-0142",at:d1.toISOString(),by:"สมชาย ก.",vals:{p:"3.4",t:"52",v:"2.1",i:"14.2"},note:"",status:"ok",sync:"sent",ex:true}
+  ];
+  persist();
+}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(records))}catch(e){storageOK=false}}
+function getName(){try{return localStorage.getItem(NAMEKEY)||""}catch(e){return ""}}
+function setName(v){try{localStorage.setItem(NAMEKEY,v)}catch(e){}}
+
+/* toast */
+let tT;function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");clearTimeout(tT);tT=setTimeout(()=>t.classList.remove("show"),2400)}
+function buzz(){try{navigator.vibrate&&navigator.vibrate(35)}catch(e){}}
+
+/* network */
+function net(){const on=navigator.onLine;const n=$("net");n.textContent=on?"ออนไลน์":"ออฟไลน์";n.classList.toggle("off",!on)}
+addEventListener("online",net);addEventListener("offline",net);net();
+
+/* views */
+const SUBS={scan:"สแกน QR อุปกรณ์เพื่อบันทึกค่า",form:"กรอกค่าที่วัดได้",hist:"รายการที่บันทึกในเครื่องนี้",qr:"QR สำหรับลองสแกน"};
+let current="scan";
+function show(v){
+  if(v!=="scan"&&live)stopLive();
+  current=v;
+  ["scan","form","hist","qr"].forEach(x=>$("v-"+x).hidden=x!==v);
+  document.querySelectorAll(".tab").forEach(t=>{const tv=t.dataset.view;const on=tv===v||(v==="form"&&tv==="scan");on?t.setAttribute("aria-current","page"):t.removeAttribute("aria-current")});
+  $("sub").textContent=SUBS[v];
+  $("main").scrollTop=0;
+  if(v==="hist")renderHist();
+}
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>show(t.dataset.view)));
+
+/* scanning */
+const video=$("video");let stream=null,live=false;
+const cv=document.createElement("canvas");const cx=cv.getContext("2d",{willReadFrequently:true});
+function msg(m,err){const e=$("scanMsg");e.textContent=m||"";e.classList.toggle("err",!!err)}
+function decode(src,w,h,maxSide){
+  if(typeof jsQR!=="function")return null;
+  const s=Math.min(1,maxSide/Math.max(w,h));const W=Math.round(w*s),H=Math.round(h*s);
+  cv.width=W;cv.height=H;cx.drawImage(src,0,0,W,H);
+  const d=cx.getImageData(0,0,W,H);
+  const r=jsQR(d.data,W,H,{inversionAttempts:maxSide>700?"attemptBoth":"dontInvert"});
+  return r&&r.data?r.data:null;
+}
+async function startLive(){
+  msg("");
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){msg("เบราว์เซอร์นี้เปิดกล้องสดไม่ได้ ใช้ “ถ่ายรูป QR” แทน",true);return}
+  try{stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"}},audio:false})}
+  catch(e){msg("หน้านี้เปิดกล้องสดไม่ได้ ใช้ “ถ่ายรูป QR” แทน (เมื่อติดตั้งบนเว็บของคุณเองผ่าน HTTPS จะสแกนสดได้)",true);return}
+  video.srcObject=stream;video.hidden=false;$("idle").hidden=true;$("sweep").hidden=false;
+  try{await video.play()}catch(e){}
+  live=true;$("liveLabel").textContent="หยุดกล้อง";msg("กำลังค้นหา QR…");tick();
+}
+function stopLive(){
+  live=false;if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+  video.hidden=true;$("idle").hidden=false;$("sweep").hidden=true;$("liveLabel").textContent="สแกนสด";
+}
+function tick(){
+  if(!live)return;
+  if(video.readyState>=2&&video.videoWidth){
+    const code=decode(video,video.videoWidth,video.videoHeight,640);
+    if(code){stopLive();msg("");onCode(code);return}
+  }
+  requestAnimationFrame(tick);
+}
+$("liveBtn").addEventListener("click",()=>live?(stopLive(),msg("")):startLive());
+
+$("photo").addEventListener("change",e=>{
+  const f=e.target.files&&e.target.files[0];e.target.value="";if(!f)return;
+  if(typeof jsQR!=="function"){msg("โหลดตัวอ่าน QR ไม่สำเร็จ ลองเชื่อมต่ออินเทอร์เน็ตแล้วเปิดหน้าใหม่",true);return}
+  msg("กำลังอ่าน QR จากรูป…");
+  const url=URL.createObjectURL(f);const img=new Image();
+  img.onload=()=>{
+    let code=null;
+    for(const s of [1000,1600,600]){code=decode(img,img.naturalWidth,img.naturalHeight,s);if(code)break}
+    URL.revokeObjectURL(url);
+    if(code){msg("");onCode(code)}else msg("ไม่พบ QR ในรูป ลองถ่ายให้ใกล้ขึ้นและให้ QR อยู่กลางภาพ",true);
+  };
+  img.onerror=()=>{URL.revokeObjectURL(url);msg("เปิดรูปนี้ไม่ได้ ลองถ่ายใหม่อีกครั้ง",true)};
+  img.src=url;
+});
+
+$("manualForm").addEventListener("submit",e=>{e.preventDefault();const v=$("manualCode").value.trim();if(!v){$("manualCode").focus();return}onCode(v);$("manualCode").value=""});
+
+$("chips").innerHTML=Object.keys(DEVICES).map(id=>`<button type="button" class="chip" data-id="${id}">${id}</button>`).join("");
+$("chips").addEventListener("click",e=>{const b=e.target.closest(".chip");if(b)onCode(b.dataset.id)});
+
+/* parse code + open form */
+let active=null;
+function parseCode(raw){
+  let s=String(raw).trim();
+  try{const j=JSON.parse(s);if(j&&typeof j==="object"&&j.id)s=String(j.id)}catch(e){}
+  const m=s.match(/EQ-[A-Z]{3}-\d{4}/i);
+  return (m?m[0]:s).toUpperCase().slice(0,60);
+}
+function rangeText(f){
+  if(f.type)return "";
+  if(f.min!=null&&f.max!=null)return `เกณฑ์ ${f.min}–${f.max} ${f.unit}`;
+  if(f.max!=null)return `ไม่เกิน ${f.max} ${f.unit}`;
+  if(f.min!=null)return `ไม่ต่ำกว่า ${f.min} ${f.unit}`;
+  return "";
+}
+function isOut(f,v){
+  if(v===""||v==null)return false;
+  if(f.type==="select")return (f.bad||[]).includes(v);
+  if(f.type==="text")return false;
+  const n=parseFloat(v);if(isNaN(n))return false;
+  return (f.min!=null&&n<f.min)||(f.max!=null&&n>f.max);
+}
+function deviceOf(id){return DEVICES[id]||GENERIC}
+function onCode(raw){
+  buzz();
+  const id=parseCode(raw);const d=deviceOf(id);active={id,d};
+  const last=records.filter(r=>r.dev===id).sort((a,b)=>b.at.localeCompare(a.at))[0];
+  $("devCard").innerHTML=`<div class="dev${d.unknown?" unknown":""}">
+    <span class="id">${esc(id)}</span><h2>${esc(d.name)}</h2><span class="loc">${esc(d.loc)}</span>
+    ${last?`<span class="last">ตรวจครั้งก่อน ${esc(fmt(last.at))} โดย ${esc(last.by)}</span>`:`<span class="last">ยังไม่เคยบันทึกในเครื่องนี้</span>`}
+  </div>`;
+  $("fields").innerHTML=d.fields.map(f=>{
+    const prev=last&&last.vals[f.k]!=null&&last.vals[f.k]!==""?last.vals[f.k]:null;
+    const fid="f_"+f.k;
+    let ctl;
+    if(f.type==="select")ctl=`<select id="${fid}" data-k="${f.k}"><option value="">เลือก</option>${f.opts.map(o=>`<option>${esc(o)}</option>`).join("")}</select>`;
+    else if(f.type==="text")ctl=`<input type="text" id="${fid}" data-k="${f.k}" placeholder="เช่น bar, °C, A">`;
+    else ctl=`<div class="num"><input type="text" inputmode="decimal" id="${fid}" data-k="${f.k}" placeholder="0" autocomplete="off"><span class="unit">${esc(f.unit)}</span></div>`;
+    return `<div class="field" data-k="${f.k}">
+      <div class="flab"><label for="${fid}">${esc(f.label)}</label><span class="range">${esc(rangeText(f))}</span></div>
+      ${ctl}
+      <div class="fnote"><span class="flag">นอกเกณฑ์</span>${prev!=null?`<span>ครั้งก่อน <span class="mono">${esc(prev)}${f.unit?" "+esc(f.unit):""}</span></span>`:""}</div>
+    </div>`}).join("");
+  $("inspector").value=getName();$("note").value="";$("formErr").textContent="";
+  show("form");
+  const first=$("fields").querySelector("input,select");if(first)setTimeout(()=>first.focus({preventScroll:true}),60);
+}
+$("fields").addEventListener("input",e=>{
+  const el=e.target;if(!active||!el.dataset.k)return;
+  const f=active.d.fields.find(x=>x.k===el.dataset.k);
+  if(!f.type)el.value=el.value.replace(",",".").replace(/[^\d.\-]/g,"");
+  el.closest(".field").classList.toggle("out",isOut(f,el.value.trim()));
+});
+$("backBtn").addEventListener("click",()=>show("scan"));
+
+$("readForm").addEventListener("submit",e=>{
+  e.preventDefault();if(!active)return;
+  const vals={},missing=[];let out=false;
+  for(const f of active.d.fields){
+    const v=$("f_"+f.k).value.trim();
+    if(v==="")missing.push(f.label);
+    else if(!f.type&&isNaN(parseFloat(v))){$("formErr").textContent=`“${f.label}” ต้องเป็นตัวเลข`;$("f_"+f.k).focus();return}
+    vals[f.k]=v;if(isOut(f,v))out=true;
+  }
+  const by=$("inspector").value.trim();
+  if(!by)missing.push("ผู้ตรวจ");
+  if(missing.length){$("formErr").textContent="ยังไม่ได้กรอก: "+missing.join(", ");return}
+  setName(by);
+  records.unshift({id:uid(),dev:active.id,at:new Date().toISOString(),by,vals,note:$("note").value.trim(),status:out?"warn":"ok",sync:"pending",ex:false});
+  persist();updateBadge();buzz();
+  toast(out?`บันทึกแล้ว · ${active.id} มีค่านอกเกณฑ์`:`บันทึกแล้ว · ${active.id}`);
+  active=null;show("scan");
+});
+
+/* history */
+function updateBadge(){const n=records.filter(r=>r.sync==="pending").length;const b=$("badge");b.hidden=!n;b.textContent=n}
+function renderHist(){
+  $("cAll").textContent=records.length;
+  const pend=records.filter(r=>r.sync==="pending").length;
+  $("cPend").textContent=pend;$("cWarn").textContent=records.filter(r=>r.status==="warn").length;
+  $("syncBtn").disabled=!pend||syncing;
+  $("exNote").hidden=!records.some(r=>r.ex);
+  $("storageWarn").hidden=storageOK;
+  if(!records.length){$("list").innerHTML=`<div class="empty">ยังไม่มีรายการ<br>สแกน QR อุปกรณ์เครื่องแรกที่แท็บ “สแกน”</div>`;return}
+  $("list").innerHTML=records.map(r=>{
+    const d=deviceOf(r.dev);
+    const rows=d.fields.map(f=>{const v=r.vals[f.k];if(v==null||v==="")return"";return `<tr class="${isOut(f,v)?"out":""}"><td>${esc(f.label)}</td><td>${esc(v)}${f.unit?" "+esc(f.unit):""}</td></tr>`}).join("");
+    return `<details class="rec" data-id="${r.id}"><summary>
+      <div class="r1"><span class="id">${esc(r.dev)}</span><span class="pills">
+        ${r.ex?`<span class="pill p-ex">ตัวอย่าง</span>`:""}
+        ${r.status==="warn"?`<span class="pill p-warn">นอกเกณฑ์</span>`:`<span class="pill p-ok">ปกติ</span>`}</span></div>
+      <div class="r2">${esc(d.name)}</div>
+      <div class="r3"><span>${esc(fmt(r.at))}</span><span>${esc(r.by)}</span>${r.sync==="pending"?`<span class="pill p-pend">รอส่ง</span>`:`<span class="pill p-sent">ส่งแล้ว ✓</span>`}</div>
+    </summary><div class="body">
+      <table class="vals"><tbody>${rows}</tbody></table>
+      ${r.note?`<div class="note">${esc(r.note)}</div>`:""}
+      <div class="rec-act"><button class="del" type="button" data-del="${r.id}">ลบรายการ</button></div>
+    </div></details>`}).join("");
+}
+$("list").addEventListener("click",e=>{
+  const b=e.target.closest("[data-del]");if(!b)return;
+  if(!b.classList.contains("arm")){b.classList.add("arm");b.textContent="แตะอีกครั้งเพื่อลบ";setTimeout(()=>{if(b.isConnected){b.classList.remove("arm");b.textContent="ลบรายการ"}},3000);return}
+  records=records.filter(r=>r.id!==b.dataset.del);persist();updateBadge();renderHist();toast("ลบรายการแล้ว");
+});
+$("clearEx").addEventListener("click",()=>{records=records.filter(r=>!r.ex);persist();updateBadge();renderHist();toast("ลบรายการตัวอย่างแล้ว")});
+let syncing=false;
+$("syncBtn").addEventListener("click",()=>{
+  const n=records.filter(r=>r.sync==="pending").length;if(!n||syncing)return;
+  if(!navigator.onLine){toast("ออฟไลน์อยู่ รายการจะรอส่งไว้ในเครื่อง");return}
+  syncing=true;$("syncBtn").disabled=true;$("syncLabel").textContent="กำลังส่ง…";
+  setTimeout(()=>{records.forEach(r=>{if(r.sync==="pending")r.sync="sent"});persist();syncing=false;$("syncLabel").textContent="ส่งขึ้นเซิร์ฟเวอร์";updateBadge();renderHist();toast(`ส่งแล้ว ${n} รายการ (จำลอง)`)},1200);
+});
+
+/* QR test sheet */
+$("qrgrid").innerHTML=Object.keys(QR).map(id=>{const[n,d]=QR[id];return `<div class="qr"><div class="plate"><svg viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges" role="img" aria-label="QR ${id}"><path fill="var(--qr-ink)" d="${d}"/></svg></div><span class="id">${id}</span><span class="nm">${esc(DEVICES[id].name)}</span></div>`}).join("");
+
+updateBadge();
+})();
+</script>
+
+</body>
+</html>
